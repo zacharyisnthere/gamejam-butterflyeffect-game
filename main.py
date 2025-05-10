@@ -227,12 +227,14 @@ class GameScene(SceneBase):
         self.text_sprites = pygame.sprite.Group()
 
         self.player = Player(self.all_sprites)
-        self.player.pos = self.GenerateRoutePoint()
+
+        self.player.pos, self.player.angle = self.generate_route_point()
 
 
-    def GenerateRoutePoint(self):
+    def generate_route_point(self):
         buf = 30
         pos = pygame.math.Vector2()
+        angle = 0
         side = random.randint(0,3) #0-top, 1-right, 2-bottom, 3-left
         
         if side in (0,2):
@@ -241,9 +243,13 @@ class GameScene(SceneBase):
         if side in (1,3):
             pos.x = 0+buf if side==3 else PLAY_WIDTH-buf
             pos.y = random.randint(0+buf, PLAY_HEIGHT-buf)
-        
-        print(f'side: {side} | pos: {pos}')
-        return(pos)
+
+        if side==0: angle = 0
+        if side==1: angle = 270
+        if side==2: angle = 180
+        if side==3: angle = 90
+
+        return pos,angle
 
 
 
@@ -268,7 +274,7 @@ class GameScene(SceneBase):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    self.player.pos = self.GenerateRoutePoint()
+                    self.player.pos, self.player.angle = self.generate_route_point()
 
 
     def Update(self, dt):
