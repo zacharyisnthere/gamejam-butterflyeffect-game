@@ -140,7 +140,7 @@ class Player(pygame.sprite.Sprite):
 
         self.end_point = None
         self.enemies = None
-        self.walls = None
+        self.wall = None
 
         self.og_image = pygame.image.load('assets/img/car_sprite.png').convert_alpha()
         self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
@@ -179,11 +179,15 @@ class Player(pygame.sprite.Sprite):
         if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
             print('AAAHHH!')
         
-        for wall in self.walls:
-            if self.mask.overlap(wall.mask, (wall.rect.x-self.pos.x, wall.rect.y-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
-                self.collided_with_wall = True
-                break
-            else: self.collided_with_wall = False
+        if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+            self.collided_with_wall = True
+        else: self.collided_with_wall = False
+
+        # for wall in self.walls:
+        #     if self.mask.overlap(wall.mask, (wall.rect.x-self.pos.x, wall.rect.y-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+        #         self.collided_with_wall = True
+        #         break
+        #     else: self.collided_with_wall = False
 
 
     def Update(self, dt):
@@ -320,7 +324,7 @@ class GameScene(SceneBase):
 
             self.player.end_point = self.end_point
             self.player.enemies = self.enemies
-            self.player.walls = self.walls
+            self.player.wall = self.wall1
 
 
         self.player.Update(dt)
