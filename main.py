@@ -66,6 +66,7 @@ def main(width, height, fps, starting_scene):
 
 
 
+
 def return_closest_float(f, f_list):
     if not f_list: return None
 
@@ -138,6 +139,8 @@ class Player(pygame.sprite.Sprite):
         self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
         self.image = self.og_image
         self.rect = self.image.get_frect()
+
+        self.mask = pygame.mask.from_surface(self.image)
     
     #str: -1 turn left, 1 turn right.
     def Steer(self, steer):
@@ -155,10 +158,20 @@ class Player(pygame.sprite.Sprite):
         self.dir.y = np.cos(rad)
 
         self.dir = pygame.math.Vector2.normalize(self.dir) if self.dir.x!=0 and self.dir.y!=0 else self.dir
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.mask_image = self.mask.to_surface()
+
     
     #throt: -1 move backwards, 1 move forwards
     def Accelerate(self, throt):
         self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
+
+    
+    def CollisionChecks(self, end_point, walls, enemies):
+        if self.mask.overlap(end_point.mask, (end_point.rect.centerx-self.pos.x, end_point.rect.centery-self.pos.y)):
+            print('AAAHHH!')
+
 
     def Update(self, dt):
         if abs(self.throttle)-self.throt_gravity <= 0: self.throttle=0
@@ -196,6 +209,7 @@ class EndPoint(pygame.sprite.Sprite):
             self.image = pygame.Surface((20,20))
             self.image.fill('blue')
             self.rect = self.image.get_frect()
+            self.mask = pygame.mask.from_surface(self.image)
 
 
 
@@ -223,8 +237,8 @@ class GameScene(SceneBase):
     def __init__(self):
         SceneBase.__init__(self)
 
-        self.intro = True
-        self.playing = False
+        # self.intro = True
+        self.playing = True
         self.paused = False
 
         self.score = 0
@@ -233,9 +247,12 @@ class GameScene(SceneBase):
 
         self.all_sprites = pygame.sprite.Group()
         self.text_sprites = pygame.sprite.Group()
+        self.end_points = pygame.sprite.Group()
+        self.enemies = pygame.sprite.Group()
+        self.walls = pygame.sprite.Group()
 
         self.player = Player(self.all_sprites)
-        self.end_point = EndPoint(self.all_sprites)
+        self.end_point = EndPoint([self.all_sprites, self.end_points])
 
         self.player.pos, self.player.angle = self.generate_route_point()
         self.end_point.rect.center, foo = self.generate_route_point()
@@ -266,9 +283,10 @@ class GameScene(SceneBase):
 
 
     def Update(self, dt):
-        
         if self.playing:
-            self.del_time -= self.del_time-dt if self.del_time>0 else 0
+            # self.del_time -= self.del_time-dt if self.del_time>0 else 0
+
+            self.player.CollisionChecks(self.end_point, self.walls, self.enemies)          
 
 
         self.player.Update(dt)
