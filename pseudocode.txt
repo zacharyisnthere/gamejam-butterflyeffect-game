@@ -1,0 +1,237 @@
+
+
+
+boiler plate classes, base classes first.
+Other object classes
+
+main game loop def
+    init stuff
+    while active_scene!=None:
+        input stuff, filter out quit attempts. 
+            if quit: quit
+        call active_scene process input, update, and render.
+        active_scene = active_scene.next
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+scene classes
+
+call main game loop 
+
+
+
+
+
+===OBJECT CLASSES===
+
+scenebase class: #super cool base class for scenes. 
+This is created to be overriden in child classes, each child using this as a skeleton.
+
+    >internal variables:
+    next #the scene that should be active riiiight now. equal to self on init.
+    #NOTE: 'next' variable is used to define active scene in the main game loop. That's how SwitchToScene() works.
+
+    >functions
+    ProcessInput(events, pressed_keys) #will contain a for event in events with a pressed_keys check in the child class. Updated every frame in main game loop
+    Update() #called every frame in main game loop
+    Render(screen) #render the screen, called after update every frame. screen variable is the game window, passed through to allow the child scene to access.
+    SwitchToScene(next_scene) #sets next scene.
+    Terminate() switch to scene NULL, not rendering anything. This also triggers the while active_scene!=None in the main game loop to end, causing a quit.
+
+
+def __init__(self):
+        self.next = self
+    
+    def ProcessInput(self, events, pressed_keys):
+        print("uh-oh, you didn't override this in the child class")
+
+    def Update(self):
+        print("uh-oh, you didn't override this in the child class")
+
+    def Render(self, screen):
+        print("uh-oh, you didn't override this in the child class")
+
+    def SwitchToScene(self, next_scene):
+        self.next = next_scene
+    
+    def Terminate(self):
+        self.SwitchToScene(None)
+
+
+
+Player class ():
+self contained object, no outside references
+
+    >internal variables:
+    can_move
+    lost = False
+    speed
+    direction 
+    position
+
+    >functions:
+    set_direction(dir) #called by input manager, 0 is not moving
+
+Update():
+    check if can_move:
+        check if pos = pos+(dir*speed) crosses into any walls, if not then: pos = pos+(dir*speed) ###possible bug, it will stop some distance before the actual wall unable to touch it. Need some code to close the distance.
+    
+    check if colliding with any ShadowPlayer object, if so: lost = True
+
+
+ShadowPlayer class ():
+self contained object, no outside references
+
+    >internal variables: *=set on init
+    route* #this is a dictionary, key=time and value=position(tuple)
+    can_move
+    position #just set by combining current time and position
+    time
+
+
+SetTime(time):
+    self.time = time
+
+Update():
+    if can_move: pos = route[time] ###possible error, if fps starts getting weird than "time" might start skipping over the time variables stored in route. If the time that frame is 1.235 and the dictionary has a key for 1.234 or 1.236, it won't call.
+
+
+wall class ():
+self contained object, no outside references
+#just exists and acts as an obstacle for the player
+    >internal variables: *=set on init
+    position* #top left
+    width*
+    height*
+
+
+
+text class:
+self contained object, no outside references
+
+    >intenral variables
+    def_font
+
+    >param variables: '=x'=optional
+    text
+    position
+    size=30
+    color=black
+    font=def_font
+
+
+#add some more ui classes EVENTUALLY idk
+
+
+
+
+
+===MAIN GAME LOOP===
+init pygame
+create screen variable with width and height
+fps
+
+    >parameters
+    width
+    height
+    fps
+    starting_scene
+
+>code to execute:
+#init
+pygame.init()
+create screen object
+create clock reference for FPS management later
+create active_scene using starting_scene param
+
+loop while active_scene!=none:
+    #input processing    
+    get pressed keys for input processing
+    filter events for quit attempts, such as alt+f4 or ESCAPE key
+    if no quit attempts, create a list of all events that frame.
+
+    pass input to active_scene and update active_scene
+
+    active_scene = active_scene.next    
+    pygame.display.flip()
+    clock.tick(fps)
+
+
+
+===SCENE CLASSES===
+
+TitleScene(SceneBase):
+init:
+    create a sprite group for text
+    create a text object('press spacebar to start'), add it to sprite group all ###or click?
+
+ProcessInput():
+    if correct input: SwitchToScene(GameScene)
+
+Update():pass
+
+Render():
+    render screen
+    render sprite groups
+
+
+GameScene(SceneBase):
+init:
+    >variables:
+    #state variables
+    is_paused
+    time
+    player_route
+
+    create a sprite group for text
+    create a sprite group for all
+    
+    create text sprites, like instructions and score and stuff
+    create walls
+    create player
+    create shadow_players #if applicable
+
+ProcessInput():
+    back to menu/pause input eventually
+    pass movement input along to player as set_direction
+
+Update(): #FIX THIS
+    check score to spawn SPs
+    set player start and end points
+    set player position 
+    set up text (score text, instruction text)
+    start intro countdown, pause until done, playing = true
+    
+    if playing true:
+        check if player.lost == True (player handles collisions)
+            turn playing off, end this loop 
+        check if player.win == True (player handles collisions with end goal)
+            turn player movement off
+            finish off counting del_time
+        start SPs moving via updated del_time
+        Player can_move = True
+
+        start counting down del_time
+        
+        update text
+
+
+
+###
+    check if is_paused, if not:
+        if player.lost == True: 
+            for sp in shadow_players: sp.can_move = False
+            #Lose
+
+        call update() on each in all sprite group 
+        increase time by dt
+        append {time,player.pos} to player_route
+
+Render():
+    render screen
+    render all
+    render text
+
+
+

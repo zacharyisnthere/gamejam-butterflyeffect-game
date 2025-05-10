@@ -1,0 +1,265 @@
+#!/home/zachary/Documents/Repos/pygame/butterfly-effect-gamejam/venv/bin/python
+
+import pygame
+import random
+
+
+#settings
+default_buffer = 0
+
+LEFT = [pygame.K_LEFT, pygame.K_a]
+RIGHT = [pygame.K_RIGHT, pygame.K_d]
+UP = [pygame.K_UP, pygame.K_w]
+DOWN = [pygame.K_DOWN, pygame.K_s]
+
+#constants
+PLAY_WIDTH, PLAY_HEIGHT = 540, 540
+WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buffer
+
+
+
+
+
+def run_game(width, height, fps, starting_scene):
+    pygame.init()
+    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    canvas = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
+    canvas_rect = canvas.get_frect()
+    clock = pygame.time.Clock()
+
+    active_scene = starting_scene
+
+    while active_scene != None:
+        dt = clock.tick(fps)/1000
+
+        pressed_keys = pygame.key.get_pressed()
+
+        filtered_events = []
+        for event in pygame.event.get():
+            quit_attempt = False
+            if event.type == pygame.QUIT:
+                quit_attempt = True
+            elif event.type == pygame.KEYDOWN:
+                alt_pressed = pressed_keys[pygame.K_LALT] or \
+                              pressed_keys[pygame.K_RALT]
+                if event.key == pygame.K_ESCAPE:
+                    quit_attempt = True
+                elif event.key == pygame.K_F4 and alt_pressed:
+                    quit_attempt = True
+            
+            if quit_attempt:
+                active_scene.Terminate()
+            else:
+                filtered_events.append(event)
+        
+        active_scene.ProcessInputs(filtered_events, pressed_keys)
+        active_scene.Update(dt)
+        active_scene.Render(canvas)
+        
+        screen.fill('white')
+        screen.blit(canvas,((screen.get_width()-PLAY_WIDTH)/2,(screen.get_height()-PLAY_HEIGHT)/2))
+
+        active_scene =  active_scene.next
+        
+        pygame.display.flip()
+
+
+
+def return_closest_float(f, f_list):
+    if not f_list: return None
+
+    closest_float = min(f_list, key=lambda x: abs(x - f))
+    return closest_float
+
+    
+
+
+
+
+class SceneBase():
+    def __init__(self):
+        self.next = self
+
+    def ProcessInputs(self):
+        print('uh oh, you didn\'t override this in the child class')
+    
+    def Update(self, dt):
+        print('uh oh, you didn\'t override this in the child class')
+    
+    def Render(self, screen):
+        print('uh oh, you didn\'t override this in the child class')
+    
+    def SwitchToScene(self, next_scene):
+        self.next = next_scene
+    
+    def Terminate(self):
+        self.SwitchToScene(None)
+
+
+class TextSprite(pygame.sprite.Sprite):
+    def __init__(self, text, pos, groups, text_size=30, text_col='black', bg_col=None):
+        pygame.font.init()
+        super().__init__(groups)
+
+        self.text = text
+
+        self.font = pygame.font.Font(None, text_size)
+        self.text_col = text_col
+        self.bg_col = bg_col
+
+        self.pos = pygame.math.Vector2(pos[0], pos[1])
+        self.image = self.font.render(self.text, True, self.text_col, self.bg_col)
+        
+        self.rect = self.image.get_frect(center = self.pos)
+    
+    def change_color(self, text_col, bg_col=None):
+        self.text_col = text_col
+        self.bg_col = bg_col
+        self.image = self.font.render(self.text, True, self.text_col, self.bg_col)
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, groups):
+        super().__init__(groups)
+        self.can_move = True
+        self.lost = False
+        self.win = False
+        self.speed = 300
+        self.dir = pygame.math.Vector2(1,1)
+        self.pos = pygame.math.Vector2(100,100)
+
+        self.image = pygame.Surface((10,10))
+        self.image.fill('red')
+        self.rect = self.image.get_frect()
+    
+    def SetDirection(self, dir):
+        self.dir = pygame.math.Vector2.normalize(dir) if dir.x!=0 and dir.y!=0 else dir
+    
+    def Update(self, dt):
+        self.pos += self.dir * self.speed * dt
+        self.rect.center = self.pos
+
+
+class ShadowPlayer(pygame.sprite.Sprite):
+    def __init__(self, route, groups):
+        super().__init__(groups)
+        self.can_move = True
+        self.route = route
+        self.pos = pygame.math.Vector2(100,100)
+
+        self.image = pygame.Surface((10,10))
+        self.image.fill('blue')
+        self.rect = self.image.get_frect()
+
+        print(self.route)
+    
+    def Update(self, time):
+        t_key = return_closest_float(time, list(self.route.keys()))
+        self.pos = self.route[t_key]
+        self.rect.center = self.pos
+        print(f'pos: {self.pos} | cur time: {time} | closest match in route: {t_key}')
+
+
+
+class TitleScene(SceneBase):    
+
+    def ProcessInputs(self, events, pressed_keys):
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN or pygame.K_SPACE:
+                    self.SwitchToScene(GameScene())
+                
+
+    def Update(self, dt):
+        self.text_sprites = pygame.sprite.Group()
+
+        start_text = TextSprite('butterfly pizza delivery!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
+        start_text = TextSprite('press enter to start game!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites])
+    
+    def Render(self, screen):
+        screen.fill('white')
+        self.text_sprites.draw(screen)
+            
+
+class GameScene(SceneBase):
+    def __init__(self):
+        SceneBase.__init__(self)
+
+        self.intro = True
+        self.playing = False
+        self.paused = False
+
+        self.score = 0
+        self.del_time = 5
+        self.player_route = {}
+
+        self.all_sprites = pygame.sprite.Group()
+        self.text_sprites = pygame.sprite.Group()
+
+        self.player = Player(self.all_sprites)
+        self.player.pos = self.GenerateRoutePoint()
+
+
+    def GenerateRoutePoint(self):
+        buf = 30
+        pos = pygame.math.Vector2()
+        side = random.randint(0,3) #0-top, 1-right, 2-bottom, 3-left
+        
+        if side in (0,2):
+            pos.x = random.randint(0+buf, PLAY_WIDTH-buf)
+            pos.y = 0+buf if side==0 else PLAY_HEIGHT-buf
+        if side in (1,3):
+            pos.x = 0+buf if side==3 else PLAY_WIDTH-buf
+            pos.y = random.randint(0+buf, PLAY_HEIGHT-buf)
+        
+        print(f'side: {side} | pos: {pos}')
+        return(pos)
+
+
+
+
+    def ProcessInputs(self, events, pressed_keys):
+        A_LEFT = pressed_keys[LEFT[0]] or pressed_keys[LEFT[1]]
+        A_RIGHT = pressed_keys[RIGHT[0]] or pressed_keys[RIGHT[1]]
+        A_UP = pressed_keys[UP[0]] or pressed_keys[UP[1]]
+        A_DOWN = pressed_keys[DOWN[0]] or pressed_keys[DOWN[1]]
+
+        pdir = pygame.math.Vector2()
+        pdir.x = A_RIGHT - A_LEFT
+        pdir.y = A_DOWN - A_UP
+        self.player.SetDirection(pdir)
+
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    self.player.pos = self.GenerateRoutePoint()
+
+
+    def Update(self, dt):
+        
+        if self.playing:
+            self.del_time -= self.del_time-dt if self.del_time>0 else 0
+
+
+        self.player.Update(dt)
+
+        # self.del_time = self.del_time-dt if self.del_time > 0 else 0
+        
+        # if self.del_time: 
+        #     self.player_route[self.del_time] = pygame.math.Vector2(self.player.pos)
+        # elif self.spyeah:
+        #     self.sp1 = ShadowPlayer(dict(self.player_route), self.all_sprites)
+        #     self.del_time = 5
+        #     self.spyeah = False
+
+        # self.player.Update(dt)
+        # if not self.spyeah: self.sp1.Update(self.del_time)
+
+
+
+    def Render(self, screen):
+        screen.fill('green')
+        self.all_sprites.draw(screen)
+
+
+run_game(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
