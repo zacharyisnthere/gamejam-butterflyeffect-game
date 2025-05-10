@@ -134,6 +134,12 @@ class Player(pygame.sprite.Sprite):
         self.throt_gravity = 0.025
         self.throt_rate = 0.1
         self.pos = pygame.math.Vector2(100,100)
+        self.precheck_pos = self.pos
+        self.collided_with_wall = False
+
+        self.end_point = None
+        self.enemies = None
+        self.walls = None
 
         self.og_image = pygame.image.load('assets/img/car_sprite.png').convert_alpha()
         self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
@@ -168,18 +174,29 @@ class Player(pygame.sprite.Sprite):
         self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
 
     
-    def CollisionChecks(self, end_point, walls, enemies):
-        if self.mask.overlap(end_point.mask, (end_point.rect.centerx-self.pos.x, end_point.rect.centery-self.pos.y)):
+    def CollisionChecks(self):
+        if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
             print('AAAHHH!')
+        
+        for wall in self.walls:
+            if self.mask.overlap(wall.mask, (wall.rect.left-self.pos.x, wall.rect.top-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+                self.collided_with_wall = True
+                break
+        else: self.collided_with_wall = False
 
+        print(self.collided_with_wall)
 
     def Update(self, dt):
         if abs(self.throttle)-self.throt_gravity <= 0: self.throttle=0
         if self.throttle>0: self.throttle -= self.throt_gravity
         elif self.throttle<0: self.throttle += self.throt_gravity
 
+        self.precheck_pos = self.pos
+
         self.pos += self.dir * self.speed * self.throttle * dt
         self.rect.center = self.pos
+
+        self.CollisionChecks()
 
 
 #need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
@@ -205,11 +222,21 @@ class ShadowPlayer(pygame.sprite.Sprite):
 
 class EndPoint(pygame.sprite.Sprite):
     def __init__(self, groups):
-            super().__init__(groups)
-            self.image = pygame.Surface((20,20))
-            self.image.fill('blue')
-            self.rect = self.image.get_frect()
-            self.mask = pygame.mask.from_surface(self.image)
+        super().__init__(groups)
+        self.image = pygame.Surface((20,20))
+        self.image.fill('blue')
+        self.rect = self.image.get_frect()
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class Wall(pygame.sprite.Sprite):
+    def __init__(self, groups, image=None, size=(100,100)):
+        super().__init__(groups)
+        self.image = pygame.Surface(size)
+        if image==None: self.image.fill('white')
+        else: self.image = pygame.image.load(image).convert_alpha()
+        self.rect = self.image.get_frect()
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 
@@ -247,15 +274,15 @@ class GameScene(SceneBase):
 
         self.all_sprites = pygame.sprite.Group()
         self.text_sprites = pygame.sprite.Group()
-        self.end_points = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
 
         self.player = Player(self.all_sprites)
-        self.end_point = EndPoint([self.all_sprites, self.end_points])
+        self.end_point = EndPoint([self.all_sprites])
 
-        self.player.pos, self.player.angle = self.generate_route_point()
-        self.end_point.rect.center, foo = self.generate_route_point()
+        self.wall1 = Wall([self.all_sprites, self.walls])
+        self.wall1.rect.center = (250, 300)
+        self.Setup()
 
 
     def ProcessInputs(self, events, pressed_keys):
@@ -278,15 +305,16 @@ class GameScene(SceneBase):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    self.player.pos, self.player.angle = self.generate_route_point()
-                    self.end_point.rect.center, foo = self.generate_route_point()
+                    self.Setup()
 
 
     def Update(self, dt):
         if self.playing:
             # self.del_time -= self.del_time-dt if self.del_time>0 else 0
 
-            self.player.CollisionChecks(self.end_point, self.walls, self.enemies)          
+            self.player.end_point = self.end_point
+            self.player.enemies = self.enemies
+            self.player.walls = self.walls
 
 
         self.player.Update(dt)
@@ -307,6 +335,11 @@ class GameScene(SceneBase):
     def Render(self, screen):
         screen.fill('green')
         self.all_sprites.draw(screen)
+
+
+    def Setup(self):
+        self.player.pos, self.player.angle = self.generate_route_point()
+        self.end_point.rect.center, foo = self.generate_route_point()
 
 
     def generate_route_point(self):
