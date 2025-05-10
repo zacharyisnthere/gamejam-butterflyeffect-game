@@ -20,7 +20,7 @@ WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buf
 
 
 
-def run_game(width, height, fps, starting_scene):
+def RunGame(width, height, fps, starting_scene):
     pygame.init()
     screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     canvas = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
@@ -65,7 +65,7 @@ def run_game(width, height, fps, starting_scene):
 
 
 
-def return_closest_float(f, f_list):
+def ReturnClosestFloat(f, f_list):
     if not f_list: return None
 
     closest_float = min(f_list, key=lambda x: abs(x - f))
@@ -112,7 +112,7 @@ class TextSprite(pygame.sprite.Sprite):
         
         self.rect = self.image.get_frect(center = self.pos)
     
-    def change_color(self, text_col, bg_col=None):
+    def ChangeColor(self, text_col, bg_col=None):
         self.text_col = text_col
         self.bg_col = bg_col
         self.image = self.font.render(self.text, True, self.text_col, self.bg_col)
@@ -154,7 +154,7 @@ class ShadowPlayer(pygame.sprite.Sprite):
         print(self.route)
     
     def Update(self, time):
-        t_key = return_closest_float(time, list(self.route.keys()))
+        t_key = ReturnClosestFloat(time, list(self.route.keys()))
         self.pos = self.route[t_key]
         self.rect.center = self.pos
         print(f'pos: {self.pos} | cur time: {time} | closest match in route: {t_key}')
@@ -262,4 +262,4 @@ class GameScene(SceneBase):
         self.all_sprites.draw(screen)
 
 
-run_game(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
+RunGame(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
