@@ -140,7 +140,7 @@ class Player(pygame.sprite.Sprite):
 
         self.end_point = None
         self.enemies = None
-        self.wall = None
+        self.walls = None
 
         self.og_image = pygame.image.load('assets/img/car_sprite.png').convert_alpha()
         self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
@@ -179,15 +179,15 @@ class Player(pygame.sprite.Sprite):
         if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
             print('AAAHHH!')
         
-        if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
-            self.collided_with_wall = True
-        else: self.collided_with_wall = False
+        # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+        #     self.collided_with_wall = True
+        # else: self.collided_with_wall = False
 
-        # for wall in self.walls:
-        #     if self.mask.overlap(wall.mask, (wall.rect.x-self.pos.x, wall.rect.y-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
-        #         self.collided_with_wall = True
-        #         break
-        #     else: self.collided_with_wall = False
+        for wall in self.walls:
+            if self.mask.overlap(wall.mask, (wall.rect.centerx-self.pos.x, wall.rect.centery-self.pos.y)): 
+                self.collided_with_wall = True
+                break
+            else: self.collided_with_wall = False
 
 
     def Update(self, dt):
@@ -240,10 +240,11 @@ class EndPoint(pygame.sprite.Sprite):
 
 
 class Wall(pygame.sprite.Sprite):
-    def __init__(self, groups, image=None, size=(20,20)):
+    def __init__(self, groups, image=None, width=20, height=20): #for some reason only works with 20x20y? no idea why the collision stops working at higher scale it's weird
         super().__init__(groups)
-        self.image = pygame.Surface(size)
-        if image==None: self.image.fill('white')
+        if image==None: 
+            self.image = pygame.Surface((width,height))
+            self.image.fill('white')
         else: self.image = pygame.image.load(image).convert_alpha()
         self.rect = self.image.get_frect()
         self.mask = pygame.mask.from_surface(self.image)
@@ -324,7 +325,7 @@ class GameScene(SceneBase):
 
             self.player.end_point = self.end_point
             self.player.enemies = self.enemies
-            self.player.wall = self.wall1
+            self.player.walls = self.walls
 
 
         self.player.Update(dt)
