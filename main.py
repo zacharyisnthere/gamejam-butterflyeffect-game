@@ -133,6 +133,7 @@ class Player(pygame.sprite.Sprite):
         self.throttle = 0
         self.throt_gravity = 0.025
         self.throt_rate = 0.1
+        self.velocity = pygame.math.Vector2()
         self.pos = pygame.math.Vector2(100,100)
         self.precheck_pos = self.pos
         self.collided_with_wall = False
@@ -179,24 +180,29 @@ class Player(pygame.sprite.Sprite):
             print('AAAHHH!')
         
         for wall in self.walls:
-            if self.mask.overlap(wall.mask, (wall.rect.left-self.pos.x, wall.rect.top-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+            if self.mask.overlap(wall.mask, (wall.rect.x-self.pos.x, wall.rect.y-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
                 self.collided_with_wall = True
                 break
-        else: self.collided_with_wall = False
+            else: self.collided_with_wall = False
 
-        print(self.collided_with_wall)
 
     def Update(self, dt):
         if abs(self.throttle)-self.throt_gravity <= 0: self.throttle=0
         if self.throttle>0: self.throttle -= self.throt_gravity
         elif self.throttle<0: self.throttle += self.throt_gravity
 
-        self.precheck_pos = self.pos
+        self.precheck_pos = pygame.math.Vector2(self.pos)
+        self.velocity = self.dir * self.speed * self.throttle * dt
 
-        self.pos += self.dir * self.speed * self.throttle * dt
-        self.rect.center = self.pos
-
+        self.pos.x += self.velocity.x
         self.CollisionChecks()
+        if self.collided_with_wall: self.pos.x = self.precheck_pos.x
+
+        self.pos.y += self.velocity.y
+        self.CollisionChecks()
+        if self.collided_with_wall: self.pos.y = self.precheck_pos.y
+
+        self.rect.center = self.pos
 
 
 #need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
@@ -230,7 +236,7 @@ class EndPoint(pygame.sprite.Sprite):
 
 
 class Wall(pygame.sprite.Sprite):
-    def __init__(self, groups, image=None, size=(100,100)):
+    def __init__(self, groups, image=None, size=(20,20)):
         super().__init__(groups)
         self.image = pygame.Surface(size)
         if image==None: self.image.fill('white')
