@@ -56,7 +56,7 @@ def RunGame(width, height, fps, starting_scene):
         active_scene.Update(dt)
         active_scene.Render(canvas)
         
-        screen.fill('white')
+        screen.fill('black')
         screen.blit(canvas,((screen.get_width()-PLAY_WIDTH)/2,(screen.get_height()-PLAY_HEIGHT)/2))
 
         active_scene =  active_scene.next
@@ -125,18 +125,30 @@ class Player(pygame.sprite.Sprite):
         self.lost = False
         self.win = False
         self.speed = 300
-        self.dir = pygame.math.Vector2(1,1)
+        self.dir = pygame.math.Vector2(0,-1)
+        self.throttle = 0
+        self.throt_gravity = 0.025
+        self.throt_rate = 0.1
         self.pos = pygame.math.Vector2(100,100)
 
-        self.image = pygame.Surface((10,10))
+        self.image = pygame.Surface((10,20))
         self.image.fill('red')
         self.rect = self.image.get_frect()
     
-    def SetDirection(self, dir):
-        self.dir = pygame.math.Vector2.normalize(dir) if dir.x!=0 and dir.y!=0 else dir
+    #str: -1 turn left, 1 turn right.
+    def Steer(self, str):
+        pass
     
+    #throt: -1 move backwards, 1 move forwards
+    def Accelerate(self, throt):
+        self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
+
     def Update(self, dt):
-        self.pos += self.dir * self.speed * dt
+        if abs(self.throttle)-self.throt_gravity <= 0: self.throttle=0
+        if self.throttle>0: self.throttle -= self.throt_gravity
+        elif self.throttle<0: self.throttle += self.throt_gravity
+
+        self.pos += self.dir * self.speed * self.throttle * dt
         self.rect.center = self.pos
 
 
@@ -227,7 +239,12 @@ class GameScene(SceneBase):
         pdir = pygame.math.Vector2()
         pdir.x = A_RIGHT - A_LEFT
         pdir.y = A_DOWN - A_UP
-        self.player.SetDirection(pdir)
+
+        # self.player.SetDirection(pdir)
+
+        throt = A_UP - A_DOWN
+        self.player.Accelerate(throt)
+
 
         for event in events:
             if event.type == pygame.KEYDOWN:
