@@ -190,9 +190,16 @@ class ShadowPlayer(pygame.sprite.Sprite):
         print(f'pos: {self.pos} | cur time: {time} | closest match in route: {t_key}')
 
 
+class EndPoint(pygame.sprite.Sprite):
+    def __init__(self, groups):
+            super().__init__(groups)
+            self.image = pygame.Surface((20,20))
+            self.image.fill('blue')
+            self.rect = self.image.get_frect()
+
+
 
 class TitleScene(SceneBase):    
-
     def ProcessInputs(self, events, pressed_keys):
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -211,6 +218,7 @@ class TitleScene(SceneBase):
         self.text_sprites.draw(screen)
             
 
+
 class GameScene(SceneBase):
     def __init__(self):
         SceneBase.__init__(self)
@@ -227,31 +235,10 @@ class GameScene(SceneBase):
         self.text_sprites = pygame.sprite.Group()
 
         self.player = Player(self.all_sprites)
+        self.end_point = EndPoint(self.all_sprites)
 
         self.player.pos, self.player.angle = self.generate_route_point()
-
-
-    def generate_route_point(self):
-        buf = 30
-        pos = pygame.math.Vector2()
-        angle = 0
-        side = random.randint(0,3) #0-top, 1-right, 2-bottom, 3-left
-        
-        if side in (0,2):
-            pos.x = random.randint(0+buf, PLAY_WIDTH-buf)
-            pos.y = 0+buf if side==0 else PLAY_HEIGHT-buf
-        if side in (1,3):
-            pos.x = 0+buf if side==3 else PLAY_WIDTH-buf
-            pos.y = random.randint(0+buf, PLAY_HEIGHT-buf)
-
-        if side==0: angle = 0
-        if side==1: angle = 270
-        if side==2: angle = 180
-        if side==3: angle = 90
-
-        return pos,angle
-
-
+        self.end_point.rect.center, foo = self.generate_route_point()
 
 
     def ProcessInputs(self, events, pressed_keys):
@@ -275,6 +262,7 @@ class GameScene(SceneBase):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.player.pos, self.player.angle = self.generate_route_point()
+                    self.end_point.rect.center, foo = self.generate_route_point()
 
 
     def Update(self, dt):
@@ -298,10 +286,30 @@ class GameScene(SceneBase):
         # if not self.spyeah: self.sp1.Update(self.del_time)
 
 
-
     def Render(self, screen):
         screen.fill('green')
         self.all_sprites.draw(screen)
+
+
+    def generate_route_point(self):
+        buf = 30
+        pos = pygame.math.Vector2()
+        angle = 0
+        side = random.randint(0,3) #0-top, 1-right, 2-bottom, 3-left
+        
+        if side in (0,2):
+            pos.x = random.randint(0+buf, PLAY_WIDTH-buf)
+            pos.y = 0+buf if side==0 else PLAY_HEIGHT-buf
+        if side in (1,3):
+            pos.x = 0+buf if side==3 else PLAY_WIDTH-buf
+            pos.y = random.randint(0+buf, PLAY_HEIGHT-buf)
+
+        if side==0: angle = 0
+        if side==1: angle = 270
+        if side==2: angle = 180
+        if side==3: angle = 90
+
+        return pos,angle
 
 
 main(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
