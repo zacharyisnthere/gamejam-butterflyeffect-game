@@ -1,6 +1,7 @@
 #!/home/zachary/Documents/Repos/pygame/butterfly-effect-gamejam/venv/bin/python
 
 import pygame
+import numpy as np
 import random
 
 
@@ -20,7 +21,7 @@ WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buf
 
 
 
-def RunGame(width, height, fps, starting_scene):
+def main(width, height, fps, starting_scene):
     pygame.init()
     screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     canvas = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
@@ -65,7 +66,7 @@ def RunGame(width, height, fps, starting_scene):
 
 
 
-def ReturnClosestFloat(f, f_list):
+def return_closest_float(f, f_list):
     if not f_list: return None
 
     closest_float = min(f_list, key=lambda x: abs(x - f))
@@ -125,19 +126,35 @@ class Player(pygame.sprite.Sprite):
         self.lost = False
         self.win = False
         self.speed = 300
-        self.dir = pygame.math.Vector2(0,-1)
+        self.steer_speed = 5
+        self.angle = 0
+        self.dir = pygame.math.Vector2(0,1)
         self.throttle = 0
         self.throt_gravity = 0.025
         self.throt_rate = 0.1
         self.pos = pygame.math.Vector2(100,100)
 
-        self.image = pygame.Surface((10,20))
-        self.image.fill('red')
+        self.og_image = pygame.image.load('assets/img/car_sprite.png').convert_alpha()
+        self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
+        self.image = self.og_image
         self.rect = self.image.get_frect()
     
     #str: -1 turn left, 1 turn right.
-    def Steer(self, str):
-        pass
+    def Steer(self, steer):
+        self.angle -= steer*self.steer_speed
+        if self.angle >= 360: self.angle -= 360
+        if self.angle <= -360: self.angle += 360
+
+        rotated_image = pygame.transform.rotate(self.og_image, self.angle)
+        new_rect = rotated_image.get_frect(center=self.pos)
+        self.image = rotated_image
+        self.rect = new_rect
+
+        rad = np.deg2rad(self.angle)
+        self.dir.x = np.sin(rad)
+        self.dir.y = np.cos(rad)
+
+        self.dir = pygame.math.Vector2.normalize(self.dir) if self.dir.x!=0 and self.dir.y!=0 else self.dir
     
     #throt: -1 move backwards, 1 move forwards
     def Accelerate(self, throt):
@@ -152,6 +169,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = self.pos
 
 
+#need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
 class ShadowPlayer(pygame.sprite.Sprite):
     def __init__(self, route, groups):
         super().__init__(groups)
@@ -166,7 +184,7 @@ class ShadowPlayer(pygame.sprite.Sprite):
         print(self.route)
     
     def Update(self, time):
-        t_key = ReturnClosestFloat(time, list(self.route.keys()))
+        t_key = return_closest_float(time, list(self.route.keys()))
         self.pos = self.route[t_key]
         self.rect.center = self.pos
         print(f'pos: {self.pos} | cur time: {time} | closest match in route: {t_key}')
@@ -240,7 +258,8 @@ class GameScene(SceneBase):
         pdir.x = A_RIGHT - A_LEFT
         pdir.y = A_DOWN - A_UP
 
-        # self.player.SetDirection(pdir)
+        steer = A_RIGHT - A_LEFT
+        self.player.Steer(steer)
 
         throt = A_UP - A_DOWN
         self.player.Accelerate(throt)
@@ -279,4 +298,4 @@ class GameScene(SceneBase):
         self.all_sprites.draw(screen)
 
 
-RunGame(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
+main(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
