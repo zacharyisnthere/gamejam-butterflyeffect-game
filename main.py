@@ -127,8 +127,8 @@ class Player(pygame.sprite.Sprite):
         self.win = False
         self.speed = 300
         self.steer_speed = 5
-        self.angle = 0
-        self.dir = pygame.math.Vector2(0,1)
+        self.angle = 180
+        self.dir = pygame.math.Vector2()
         self.throttle = 0
         self.throt_gravity = 0.025
         self.throt_rate = 0.1
