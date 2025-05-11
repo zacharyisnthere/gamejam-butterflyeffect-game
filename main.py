@@ -316,7 +316,7 @@ class TitleScene(SceneBase):
         self.text_sprites = pygame.sprite.Group()
 
         start_text = TextSprite('butterfly pizza delivery!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
-        start_text = TextSprite('press [enter] to start game', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites], 20)
+        start_text = TextSprite('press [space] to start game', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites], 20)
         start_text = TextSprite('press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +45), [self.text_sprites], 20)
     
     def Render(self, screen):
@@ -399,12 +399,12 @@ class GameScene(SceneBase):
 
         if self.paused:
             self.playing = False
-            self.instruc_text = TextSprite(f'paused', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'white')
-            self.instruc_text = TextSprite(f'press [esc] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'white')
-            self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'white')
-            self.instruc_text = TextSprite(f'or press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+60), [self.text_sprites], 20, 'white')
+            self.instruc_text = TextSprite(f'paused', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'black')
+            self.instruc_text = TextSprite(f'press [esc] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black')
+            self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'black')
+            self.instruc_text = TextSprite(f'or press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+60), [self.text_sprites], 20, 'black')
 
-        elif not self.intro:
+        elif not self.intro and not self.player.lose:
             self.playing = True
 
         if self.playing:
@@ -436,10 +436,15 @@ class GameScene(SceneBase):
                     self.playing = False
 
 
+            self.player.Update(dt)
+            for e in self.enemies: 
+                e.Update(self.go_time)
+
+
         if self.outro:
             if not self.paused: 
-                self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'green', 'white')
-                self.instruc_text = TextSprite(f'press [enter] to skip to next level', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black', 'white')
+                self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'black', 'white')
+                self.instruc_text = TextSprite(f'press [space] to skip to next level', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black', 'white')
             if self.go_time<=0: self.Setup()
 
 
@@ -448,14 +453,10 @@ class GameScene(SceneBase):
                 self.instruc_text = TextSprite(f'you took too long and let the pizza get cold!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
             else:
                 self.instruc_text = TextSprite(f'oops, you crashed!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
-            self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 30, 'red', 'white')
-            self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 30, 'red', 'white')
+            self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'red', 'white')
+            self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'red', 'white')
 
-
-        self.player.Update(dt)
-        for e in self.enemies: 
-            e.Update(self.go_time)
-
+        print(self.playing)
 
 
     def Render(self, screen):
@@ -494,6 +495,7 @@ class GameScene(SceneBase):
         for i in self.enemies: i.kill()
         for i in range(self.score):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
+            enemy.Update(self.starting_go_time)
 
 
     def Reset(self):
