@@ -24,6 +24,7 @@ WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buf
 
 async def main(width, height, fps, starting_scene):
     pygame.init()
+    pygame.display.set_caption('you\'re a butterfly and you deliver pizzas!')
     screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     canvas = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
     canvas_rect = canvas.get_frect()
@@ -318,7 +319,7 @@ class TitleScene(SceneBase):
     def Update(self, dt):
         self.text_sprites = pygame.sprite.Group()
 
-        start_text = TextSprite('butterfly pizza delivery!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
+        start_text = TextSprite('you\'re a butterfly and you deliver pizzas!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
         start_text = TextSprite('press [space] to start game', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites], 20)
         start_text = TextSprite('press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +45), [self.text_sprites], 20)
     
