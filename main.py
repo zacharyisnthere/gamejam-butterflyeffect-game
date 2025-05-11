@@ -43,7 +43,9 @@ def main(width, height, fps, starting_scene):
             elif event.type == pygame.KEYDOWN:
                 alt_pressed = pressed_keys[pygame.K_LALT] or \
                               pressed_keys[pygame.K_RALT]
-                if event.key == pygame.K_F4 and alt_pressed:
+                if event.key == pygame.K_q:
+                    quit_attempt = True
+                elif event.key == pygame.K_F4 and alt_pressed:
                     quit_attempt = True
             
             if quit_attempt:
@@ -314,7 +316,8 @@ class TitleScene(SceneBase):
         self.text_sprites = pygame.sprite.Group()
 
         start_text = TextSprite('butterfly pizza delivery!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
-        start_text = TextSprite('press [enter] to start game!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites])
+        start_text = TextSprite('press [enter] to start game', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites], 20)
+        start_text = TextSprite('press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +45), [self.text_sprites], 20)
     
     def Render(self, screen):
         screen.fill('white')
@@ -375,7 +378,7 @@ class GameScene(SceneBase):
                     if self.paused: self.paused = False
 
                 if event.key in [pygame.K_ESCAPE]:
-                    self.paused=False if self.paused else True
+                    if not self.player.lose and not self.intro: self.paused=False if self.paused else True
                 
                 if event.key in [pygame.K_r]:
                     if self.paused or self.player.lose: self.Reset()
@@ -392,13 +395,14 @@ class GameScene(SceneBase):
                 self.intro=False
                 self.playing = True
             
-            self.instruc_text = TextSprite(f'deliver the pizza to the blue square!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'blue', 'white')
+            self.instruc_text = TextSprite(f'deliver the pizza to the blue square!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'blue', 'white')
 
         if self.paused:
             self.playing = False
-            self.instruc_text = TextSprite(f'paused', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'black', 'white')
-            self.instruc_text = TextSprite(f'press [esc] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black', 'white')
-            self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'black', 'white')
+            self.instruc_text = TextSprite(f'paused', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'white')
+            self.instruc_text = TextSprite(f'press [esc] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'white')
+            self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'white')
+            self.instruc_text = TextSprite(f'or press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+60), [self.text_sprites], 20, 'white')
 
         elif not self.intro:
             self.playing = True
@@ -433,7 +437,9 @@ class GameScene(SceneBase):
 
 
         if self.outro:
-            self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'green', 'white')
+            if not self.paused: 
+                self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'green', 'white')
+                self.instruc_text = TextSprite(f'press [enter] to skip to next level', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black', 'white')
             if self.go_time<=0: self.Setup()
 
 
@@ -443,6 +449,7 @@ class GameScene(SceneBase):
             else:
                 self.instruc_text = TextSprite(f'oops, you crashed!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
             self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 30, 'red', 'white')
+            self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 30, 'red', 'white')
 
 
         self.player.Update(dt)
@@ -481,6 +488,7 @@ class GameScene(SceneBase):
         self.end_point = EndPoint([self.all_sprites])
 
         self.player.pos, self.player.angle = self.generate_route_point()
+        self.player.Steer(0)
         self.end_point.rect.center, foo = self.generate_route_point()
 
         for i in self.enemies: i.kill()
