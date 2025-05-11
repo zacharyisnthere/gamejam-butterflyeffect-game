@@ -1,8 +1,9 @@
 #!/home/zachary/Documents/Repos/pygame/butterfly-effect-gamejam/venv/bin/python
 
-import pygame
 import numpy as np
 import random
+import pygame
+import asyncio
 
 
 #settings
@@ -21,7 +22,7 @@ WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buf
 
 
 
-def main(width, height, fps, starting_scene):
+async def main(width, height, fps, starting_scene):
     pygame.init()
     screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     canvas = pygame.Surface((PLAY_WIDTH, PLAY_HEIGHT))
@@ -63,6 +64,7 @@ def main(width, height, fps, starting_scene):
         active_scene =  active_scene.next
         
         pygame.display.flip()
+        await asyncio.sleep(0)
 
 
 
@@ -533,4 +535,4 @@ class GameScene(SceneBase):
         return pos,angle
 
 
-main(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene())
+asyncio.run(main(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene()))
