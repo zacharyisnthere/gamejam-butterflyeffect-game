@@ -173,7 +173,7 @@ class Player(pygame.sprite.Sprite):
     
     def CollisionChecks(self):
         if self.end_point==None: return
-        overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.width/2))
+        overlap = (self.end_point.rect.left - (self.pos.x-self.rect.width/2), self.end_point.rect.top - (self.pos.y-self.rect.width/2))
         if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
             print('AAAHHH!')
         
