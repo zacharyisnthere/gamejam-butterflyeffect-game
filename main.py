@@ -14,7 +14,7 @@ UP = [pygame.K_UP, pygame.K_w]
 DOWN = [pygame.K_DOWN, pygame.K_s]
 
 #constants
-PLAY_WIDTH, PLAY_HEIGHT = 540, 540
+PLAY_WIDTH, PLAY_HEIGHT = 650,650
 WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buffer
 
 
@@ -135,6 +135,7 @@ class Player(pygame.sprite.Sprite):
         self.throt_rate = 0.1
         self.velocity = pygame.math.Vector2()
         self.pos = pygame.math.Vector2(100,100)
+        self.precheck_angle = self.angle
         self.precheck_pos = self.pos
         self.collided_with_wall = False
 
@@ -148,46 +149,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_frect()
 
         self.mask = pygame.mask.from_surface(self.image)
-    
-    #str: -1 turn left, 1 turn right.
-    def Steer(self, steer):
-        self.angle -= steer*self.steer_speed
-        if self.angle >= 360: self.angle -= 360
-        if self.angle <= -360: self.angle += 360
-
-        rotated_image = pygame.transform.rotate(self.og_image, self.angle)
-        new_rect = rotated_image.get_frect(center=self.pos)
-        self.image = rotated_image
-        self.rect = new_rect
-
-        rad = np.deg2rad(self.angle)
-        self.dir.x = np.sin(rad)
-        self.dir.y = np.cos(rad)
-
-        self.dir = pygame.math.Vector2.normalize(self.dir) if self.dir.x!=0 and self.dir.y!=0 else self.dir
-
-        self.mask = pygame.mask.from_surface(self.image)
         self.mask_image = self.mask.to_surface()
-
-    
-    #throt: -1 move backwards, 1 move forwards
-    def Accelerate(self, throt):
-        self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
-
-    
-    def CollisionChecks(self):
-        if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
-            print('AAAHHH!')
-        
-        # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
-        #     self.collided_with_wall = True
-        # else: self.collided_with_wall = False
-
-        for wall in self.walls:
-            if self.mask.overlap(wall.mask, (wall.rect.centerx-self.pos.x, wall.rect.centery-self.pos.y)): 
-                self.collided_with_wall = True
-                break
-            else: self.collided_with_wall = False
 
 
     def Update(self, dt):
@@ -207,6 +169,55 @@ class Player(pygame.sprite.Sprite):
         if self.collided_with_wall: self.pos.y = self.precheck_pos.y
 
         self.rect.center = self.pos
+
+    
+    def CollisionChecks(self):
+        if self.end_point==None: return
+        overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.width/2))
+        if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
+            print('AAAHHH!')
+        
+        # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
+        #     self.collided_with_wall = True
+        # else: self.collided_with_wall = False
+
+        if self.walls==None: return
+        for wall in self.walls:
+            overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.width/2))
+            if self.mask.overlap(wall.mask, overlap): 
+                self.collided_with_wall = True
+                break
+            else: self.collided_with_wall = False
+
+
+     #str: -1 turn left, 1 turn right.
+    def Steer(self, steer):
+        self.precheck_angle = self.angle
+        self.angle -= steer*self.steer_speed
+        if self.angle >= 360: self.angle -= 360
+        if self.angle <= -360: self.angle += 360
+
+        # self.CollisionChecks()
+        # if self.collided_with_wall: self.angle = self.precheck_angle
+
+        rotated_image = pygame.transform.rotate(self.og_image, self.angle)
+        new_rect = rotated_image.get_frect(center=self.pos)
+        self.image = rotated_image
+        self.rect = new_rect
+
+        rad = np.deg2rad(self.angle)
+        self.dir.x = np.sin(rad)
+        self.dir.y = np.cos(rad)
+
+        self.dir = pygame.math.Vector2.normalize(self.dir) if self.dir.x!=0 and self.dir.y!=0 else self.dir
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.mask_image = self.mask.to_surface()
+
+    
+    #throt: -1 move backwards, 1 move forwards
+    def Accelerate(self, throt):
+        self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
 
 
 #need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
@@ -245,9 +256,15 @@ class Wall(pygame.sprite.Sprite):
         if image==None: 
             self.image = pygame.Surface((width,height))
             self.image.fill('white')
-        else: self.image = pygame.image.load(image).convert_alpha()
+        else: 
+            self.image = pygame.image.load(image).convert_alpha()
+            self.image = pygame.transform.smoothscale(self.image, (width,height))
+            
         self.rect = self.image.get_frect()
+        self.rect.topleft = (0,0)
+
         self.mask = pygame.mask.from_surface(self.image)
+        self.mask_image = self.mask.to_surface()
 
 
 
@@ -291,8 +308,7 @@ class GameScene(SceneBase):
         self.player = Player(self.all_sprites)
         self.end_point = EndPoint([self.all_sprites])
 
-        self.wall1 = Wall([self.all_sprites, self.walls])
-        self.wall1.rect.center = (250, 300)
+        self.wall1 = Wall([self.all_sprites, self.walls], 'assets/collision-maps/L_t1_collision-map.png', PLAY_WIDTH, PLAY_HEIGHT)
         self.Setup()
 
 
@@ -348,13 +364,14 @@ class GameScene(SceneBase):
         self.all_sprites.draw(screen)
 
 
+
     def Setup(self):
         self.player.pos, self.player.angle = self.generate_route_point()
         self.end_point.rect.center, foo = self.generate_route_point()
 
 
     def generate_route_point(self):
-        buf = 30
+        buf = 35
         pos = pygame.math.Vector2()
         angle = 0
         side = random.randint(0,3) #0-top, 1-right, 2-bottom, 3-left
