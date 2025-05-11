@@ -392,7 +392,7 @@ class GameScene(SceneBase):
                 if event.key in [pygame.K_r]:
                     if self.paused or self.player.lose: self.Reset()
 
-
+ 
 
     def Update(self, dt):
         self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
