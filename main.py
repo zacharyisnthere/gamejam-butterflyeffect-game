@@ -195,6 +195,7 @@ class Player(pygame.sprite.Sprite):
             else: self.collided_with_wall = False
         
         if self.enemies==None: return
+        if self.win: return
         for enemy in self.enemies:
             overlap = (enemy.rect.left - (self.pos.x-self.rect.width/2), enemy.rect.top - (self.pos.y-self.rect.height/2))
             if self.mask.overlap(enemy.mask, overlap):
