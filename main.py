@@ -14,7 +14,7 @@ UP = [pygame.K_UP, pygame.K_w]
 DOWN = [pygame.K_DOWN, pygame.K_s]
 
 #constants
-PLAY_WIDTH, PLAY_HEIGHT = 650,650
+PLAY_WIDTH, PLAY_HEIGHT = 600,600
 WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buffer
 
 
@@ -126,8 +126,8 @@ class Player(pygame.sprite.Sprite):
         self.can_move = True
         self.lost = False
         self.win = False
-        self.speed = 300
-        self.steer_speed = 5
+        self.speed = 250
+        self.steer_speed = 7
         self.angle = 180
         self.dir = pygame.math.Vector2()
         self.throttle = 0
