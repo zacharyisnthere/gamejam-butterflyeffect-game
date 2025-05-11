@@ -176,7 +176,7 @@ class Player(pygame.sprite.Sprite):
     def CollisionChecks(self):
         if self.end_point==None: return
         overlap = (self.end_point.rect.left - (self.pos.x-self.rect.width/2), self.end_point.rect.top - (self.pos.y-self.rect.width/2))
-        if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
+        if self.mask.overlap(self.end_point.mask, overlap):
             self.win = True
         
         # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
@@ -413,7 +413,6 @@ class GameScene(SceneBase):
             self.go_time = self.go_time-dt if self.go_time>0 else 0
             if self.go_time==0 and not self.player.win: 
                 self.player.lose = True
-                print('loooost')
 
             #inefficient but it works fuck off
             self.player.end_point = self.end_point
@@ -432,7 +431,6 @@ class GameScene(SceneBase):
                 if self.go_time >= self.starting_go_time-1: 
                     self.player.lose = False
                 else:
-                    print('loser')
                     self.playing = False
 
 
@@ -448,15 +446,14 @@ class GameScene(SceneBase):
             if self.go_time<=0: self.Setup()
 
 
-        if self.player.lose:
+        if self.player.lose and self.go_time < self.starting_go_time-1:
+                
             if self.go_time == 0:
                 self.instruc_text = TextSprite(f'you took too long and let the pizza get cold!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
             else:
                 self.instruc_text = TextSprite(f'oops, you crashed!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
             self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'red', 'white')
             self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'red', 'white')
-
-        print(self.playing)
 
 
     def Render(self, screen):
@@ -488,14 +485,27 @@ class GameScene(SceneBase):
         self.player = Player(self.all_sprites)
         self.end_point = EndPoint([self.all_sprites])
 
-        self.player.pos, self.player.angle = self.generate_route_point()
-        self.player.Steer(0)
         self.end_point.rect.center, foo = self.generate_route_point()
 
         for i in self.enemies: i.kill()
         for i in range(self.score):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
             enemy.Update(self.starting_go_time)
+
+
+        good_spawn = False
+        while not good_spawn:
+            self.player.pos, self.player.angle = self.generate_route_point()
+            self.player.Steer(0)
+
+            ep_overlap = (self.end_point.rect.left - (self.player.pos.x-self.player.rect.width), \
+                                self.end_point.rect.top - (self.player.pos.y-self.player.rect.height))
+            ep_overlapping = self.player.mask.overlap(self.end_point.mask, ep_overlap)
+            if not ep_overlapping: good_spawn = True
+            
+
+
+        
 
 
     def Reset(self):
