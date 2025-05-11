@@ -43,9 +43,7 @@ def main(width, height, fps, starting_scene):
             elif event.type == pygame.KEYDOWN:
                 alt_pressed = pressed_keys[pygame.K_LALT] or \
                               pressed_keys[pygame.K_RALT]
-                if event.key == pygame.K_ESCAPE:
-                    quit_attempt = True
-                elif event.key == pygame.K_F4 and alt_pressed:
+                if event.key == pygame.K_F4 and alt_pressed:
                     quit_attempt = True
             
             if quit_attempt:
@@ -66,7 +64,6 @@ def main(width, height, fps, starting_scene):
 
 
 
-
 def return_closest_float(f, f_list):
     if not f_list: return None
 
@@ -74,8 +71,6 @@ def return_closest_float(f, f_list):
     return closest_float
 
     
-
-
 
 
 class SceneBase():
@@ -158,7 +153,8 @@ class Player(pygame.sprite.Sprite):
         elif self.throttle<0: self.throttle += self.throt_gravity
 
         self.precheck_pos = pygame.math.Vector2(self.pos)
-        self.velocity = self.dir * self.speed * self.throttle * dt
+        if not self.lose: self.velocity = self.dir * self.speed * self.throttle * dt
+        else: self.velocity = pygame.math.Vector2(0,0)
 
         self.pos.x += self.velocity.x
         self.CollisionChecks()
@@ -248,8 +244,6 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_frect()
 
         self.mask = pygame.mask.from_surface(self.image)
-
-        print(route)
     
     def Update(self, time):
         t_key = return_closest_float(time, list(self.route.keys()))
@@ -312,7 +306,7 @@ class TitleScene(SceneBase):
     def ProcessInputs(self, events, pressed_keys):
         for event in events:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN or pygame.K_SPACE:
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                     self.SwitchToScene(GameScene())
                 
 
@@ -320,7 +314,7 @@ class TitleScene(SceneBase):
         self.text_sprites = pygame.sprite.Group()
 
         start_text = TextSprite('butterfly pizza delivery!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
-        start_text = TextSprite('press enter to start game!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites])
+        start_text = TextSprite('press [enter] to start game!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites])
     
     def Render(self, screen):
         screen.fill('white')
@@ -376,8 +370,16 @@ class GameScene(SceneBase):
 
         for event in events:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    self.go_time = 0
+                if event.key in [pygame.K_SPACE, pygame.K_RETURN]:
+                    if self.player.win: self.go_time = 0
+                    if self.paused: self.paused = False
+
+                if event.key in [pygame.K_ESCAPE]:
+                    self.paused=False if self.paused else True
+                
+                if event.key in [pygame.K_r]:
+                    if self.paused or self.player.lose: self.Reset()
+
 
 
     def Update(self, dt):
@@ -392,11 +394,22 @@ class GameScene(SceneBase):
             
             self.instruc_text = TextSprite(f'deliver the pizza to the blue square!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'blue', 'white')
 
+        if self.paused:
+            self.playing = False
+            self.instruc_text = TextSprite(f'paused', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'black', 'white')
+            self.instruc_text = TextSprite(f'press [esc] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black', 'white')
+            self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'black', 'white')
+
+        elif not self.intro:
+            self.playing = True
 
         if self.playing:
             self.player_route[self.go_time] = [self.player.pos.x, self.player.pos.y, self.player.angle, int(self.player.win)]
             
             self.go_time = self.go_time-dt if self.go_time>0 else 0
+            if self.go_time==0 and not self.player.win: 
+                self.player.lose = True
+                print('loooost')
 
             #inefficient but it works fuck off
             self.player.end_point = self.end_point
@@ -416,14 +429,26 @@ class GameScene(SceneBase):
                     self.player.lose = False
                 else:
                     print('loser')
+                    self.playing = False
+
 
         if self.outro:
-            self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'green', 'white')
+            self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'green', 'white')
             if self.go_time<=0: self.Setup()
+
+
+        if self.player.lose:
+            if self.go_time == 0:
+                self.instruc_text = TextSprite(f'you took too long and let the pizza get cold!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
+            else:
+                self.instruc_text = TextSprite(f'oops, you crashed!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
+            self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 30, 'red', 'white')
+
 
         self.player.Update(dt)
         for e in self.enemies: 
             e.Update(self.go_time)
+
 
 
     def Render(self, screen):
@@ -442,6 +467,7 @@ class GameScene(SceneBase):
         self.intro_time = self.starting_intro_time
         self.playing = False
         self.outro = False
+        self.paused = False
         self.go_time = self.starting_go_time
         self.level+=1
 
@@ -461,6 +487,9 @@ class GameScene(SceneBase):
         for i in range(self.score):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
 
+
+    def Reset(self):
+        self.SwitchToScene(GameScene())
 
 
     def generate_route_point(self):
