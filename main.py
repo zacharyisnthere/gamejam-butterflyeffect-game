@@ -124,9 +124,9 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
         self.can_move = True
-        self.lost = False
+        self.lose = False
         self.win = False
-        self.speed = 250
+        self.speed = 280
         self.steer_speed = 7
         self.angle = 180
         self.dir = pygame.math.Vector2()
@@ -143,8 +143,8 @@ class Player(pygame.sprite.Sprite):
         self.enemies = None
         self.walls = None
 
-        self.og_image = pygame.image.load('assets/img/car_sprite.png').convert_alpha()
-        self.og_image = pygame.transform.smoothscale(self.og_image, (10,20))
+        self.og_image = pygame.image.load('assets/img/butterfly.jpeg').convert_alpha()
+        self.og_image = pygame.transform.smoothscale(self.og_image, (20,20))
         self.image = self.og_image
         self.rect = self.image.get_frect()
 
@@ -175,7 +175,7 @@ class Player(pygame.sprite.Sprite):
         if self.end_point==None: return
         overlap = (self.end_point.rect.left - (self.pos.x-self.rect.width/2), self.end_point.rect.top - (self.pos.y-self.rect.width/2))
         if self.mask.overlap(self.end_point.mask, (self.end_point.rect.centerx-self.pos.x, self.end_point.rect.centery-self.pos.y)):
-            print('AAAHHH!')
+            self.win = True
         
         # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
         #     self.collided_with_wall = True
@@ -183,11 +183,18 @@ class Player(pygame.sprite.Sprite):
 
         if self.walls==None: return
         for wall in self.walls:
-            overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.width/2))
+            overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.height/2))
             if self.mask.overlap(wall.mask, overlap): 
                 self.collided_with_wall = True
                 break
             else: self.collided_with_wall = False
+        
+        if self.enemies==None: return
+        for enemy in self.enemies:
+            overlap = (enemy.rect.left - (self.pos.x-self.rect.width/2), enemy.rect.top - (self.pos.y-self.rect.height/2))
+            if self.mask.overlap(enemy.mask, overlap)
+                self.lose = True
+                break
 
 
      #str: -1 turn left, 1 turn right.
@@ -250,6 +257,16 @@ class EndPoint(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+class DeadEndPoint(pygame.sprite.Sprite):
+    def __init__(self, groups):
+        super().__init__(groups)
+        self.image = pygame.Surface((20,20))
+        self.image.fill('grey')
+        self.rect = self.image.get_frect()
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+
 class Wall(pygame.sprite.Sprite):
     def __init__(self, groups, image=None, width=20, height=20): #for some reason only works with 20x20y? no idea why the collision stops working at higher scale it's weird
         super().__init__(groups)
@@ -292,23 +309,28 @@ class GameScene(SceneBase):
     def __init__(self):
         SceneBase.__init__(self)
 
-        # self.intro = True
-        self.playing = True
+        self.intro = True
+        self.playing = False
+        self.outro = False
         self.paused = False
 
+        self.starting_intro_time = 2.5
+        self.intro_time = self.starting_intro_time
         self.score = 0
-        self.del_time = 5
+        self.starting_go_time = 6
+        self.go_time = self.starting_go_time
         self.player_route = {}
 
         self.all_sprites = pygame.sprite.Group()
         self.text_sprites = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.walls = pygame.sprite.Group()
+        self.dead_end_points = pygame.sprite.Group()
 
-        self.player = Player(self.all_sprites)
-        self.end_point = EndPoint([self.all_sprites])
+        self.player = None #defined in setup
+        self.end_point = None #defined in setup
 
-        self.wall1 = Wall([self.all_sprites, self.walls], 'assets/collision-maps/L_t1_collision-map.png', PLAY_WIDTH, PLAY_HEIGHT)
+        #self.wall1 = Wall([self.all_sprites, self.walls], 'assets/collision-maps/L_t1_collision-map.png', PLAY_WIDTH, PLAY_HEIGHT)
         self.Setup()
 
 
@@ -318,15 +340,12 @@ class GameScene(SceneBase):
         A_UP = pressed_keys[UP[0]] or pressed_keys[UP[1]]
         A_DOWN = pressed_keys[DOWN[0]] or pressed_keys[DOWN[1]]
 
-        pdir = pygame.math.Vector2()
-        pdir.x = A_RIGHT - A_LEFT
-        pdir.y = A_DOWN - A_UP
-
         steer = A_RIGHT - A_LEFT
-        self.player.Steer(steer)
-
         throt = A_UP - A_DOWN
-        self.player.Accelerate(throt)
+
+        if self.playing and not self.outro:
+            self.player.Steer(steer)
+            self.player.Accelerate(throt)
 
 
         for event in events:
@@ -336,13 +355,41 @@ class GameScene(SceneBase):
 
 
     def Update(self, dt):
-        if self.playing:
-            # self.del_time -= self.del_time-dt if self.del_time>0 else 0
+        if self.intro:
+            self.intro_time -= dt
+            if self.intro_time <= 0: 
+                self.intro=False
+                self.playing = True
+            
+            self.instruc_text = TextSprite(f'deliver the pizza to the blue square!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'blue', 'white')
+            self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
 
+        if self.playing:
+            self.go_time = self.go_time-dt if self.go_time>0 else 0
+
+            #inefficient but it works fuck off
             self.player.end_point = self.end_point
             self.player.enemies = self.enemies
             self.player.walls = self.walls
 
+
+            self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
+
+
+            if self.player.win:
+                self.score += 1
+                self.outro = True
+                self.player.kill()
+
+            if self.player.lose:
+                if self.go_time >= self.starting_go_time-1: 
+                    self.player.lose = False
+                else:
+                    print('loser')
+
+        if self.outro:
+            if self.go_time<=0: self.Setup()
+            self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'green', 'white')
 
         self.player.Update(dt)
 
@@ -361,13 +408,36 @@ class GameScene(SceneBase):
 
     def Render(self, screen):
         screen.fill('green')
+        self.dead_end_points.draw(screen) #I want player to be rendered on top of this
         self.all_sprites.draw(screen)
+        self.text_sprites.draw(screen)
+
+        for i in self.text_sprites: i.kill()
 
 
 
     def Setup(self):
+        self.intro = True
+        self.intro_time = self.starting_intro_time
+        self.playing = False
+        self.outro = False
+        self.go_time = self.starting_go_time
+
+
+        if self.player: self.player.kill()
+        if self.end_point: 
+            self.dead_end_point = DeadEndPoint(self.dead_end_points)
+            self.dead_end_point.rect.center = self.end_point.rect.center
+            self.end_point.kill()
+
+        self.player = Player(self.all_sprites)
+        self.end_point = EndPoint([self.all_sprites])
+
         self.player.pos, self.player.angle = self.generate_route_point()
         self.end_point.rect.center, foo = self.generate_route_point()
+
+
+
 
 
     def generate_route_point(self):
