@@ -144,7 +144,7 @@ class Player(pygame.sprite.Sprite):
         self.walls = None
 
         self.og_image = pygame.image.load('assets/img/butterfly.jpeg').convert_alpha()
-        self.og_image = pygame.transform.smoothscale(self.og_image, (20,20))
+        self.og_image = pygame.transform.smoothscale(self.og_image, (15,20))
         self.image = self.og_image
         self.rect = self.image.get_frect()
 
@@ -242,7 +242,7 @@ class Enemy(pygame.sprite.Sprite):
         self.pos = pygame.math.Vector2(100,100)
         self.angle = 180
 
-        self.og_image = pygame.Surface((20,20)).convert_alpha()
+        self.og_image = pygame.Surface((10,20)).convert_alpha()
         self.og_image.fill('red')
         self.image = self.og_image
         self.rect = self.image.get_frect()
@@ -340,6 +340,7 @@ class GameScene(SceneBase):
         self.starting_intro_time = 2.5
         self.intro_time = self.starting_intro_time
         self.score = 0
+        self.level = -1
         self.starting_go_time = 6
         self.go_time = self.starting_go_time
 
@@ -376,10 +377,13 @@ class GameScene(SceneBase):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    self.Setup()
+                    self.go_time = 0
 
 
     def Update(self, dt):
+        self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
+        self.del_time_text = TextSprite(f'level: {self.level}', (PLAY_WIDTH/2, 45), [self.text_sprites], 20, 'white')
+        
         if self.intro:
             self.intro_time -= dt
             if self.intro_time <= 0: 
@@ -387,12 +391,10 @@ class GameScene(SceneBase):
                 self.playing = True
             
             self.instruc_text = TextSprite(f'deliver the pizza to the blue square!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'blue', 'white')
-            self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
+
 
         if self.playing:
             self.player_route[self.go_time] = [self.player.pos.x, self.player.pos.y, self.player.angle, int(self.player.win)]
-
-
             
             self.go_time = self.go_time-dt if self.go_time>0 else 0
 
@@ -401,7 +403,6 @@ class GameScene(SceneBase):
             self.player.enemies = self.enemies
             self.player.walls = self.walls
 
-            self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
 
             if self.player.win:
                 if self.player in self.all_sprites:
@@ -425,21 +426,6 @@ class GameScene(SceneBase):
             e.Update(self.go_time)
 
 
-
-
-        # self.del_time = self.del_time-dt if self.del_time > 0 else 0
-        
-        # if self.del_time: 
-        #     self.player_route[self.del_time] = pygame.math.Vector2(self.player.pos)
-        # elif self.spyeah:
-        #     self.sp1 = ShadowPlayer(dict(self.player_route), self.all_sprites)
-        #     self.del_time = 5
-        #     self.spyeah = False
-
-        # self.player.Update(dt)
-        # if not self.spyeah: self.sp1.Update(self.del_time)
-
-
     def Render(self, screen):
         screen.fill('green')
         self.dead_end_points.draw(screen) #I want player to be rendered on top of this
@@ -457,6 +443,7 @@ class GameScene(SceneBase):
         self.playing = False
         self.outro = False
         self.go_time = self.starting_go_time
+        self.level+=1
 
         if self.player in self.all_sprites: self.player.kill()
         if self.end_point in self.all_sprites: 
@@ -473,8 +460,6 @@ class GameScene(SceneBase):
         for i in self.enemies: i.kill()
         for i in range(self.score):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
-
-
 
 
 
