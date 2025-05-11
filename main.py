@@ -451,7 +451,7 @@ class GameScene(SceneBase):
 
 
     def Setup(self):
-
+        self.player_route = {}
         self.intro = True
         self.intro_time = self.starting_intro_time
         self.playing = False
@@ -473,7 +473,6 @@ class GameScene(SceneBase):
         for i in self.enemies: i.kill()
         for i in range(self.score):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
-            print(enemy)
 
 
 
