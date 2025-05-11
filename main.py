@@ -162,10 +162,14 @@ class Player(pygame.sprite.Sprite):
 
         self.pos.x += self.velocity.x
         self.CollisionChecks()
+        if self.pos.x <= 0+self.rect.width: self.collided_with_wall=True
+        if self.pos.x >= PLAY_WIDTH-self.rect.width: self.collided_with_wall=True
         if self.collided_with_wall: self.pos.x = self.precheck_pos.x
 
         self.pos.y += self.velocity.y
         self.CollisionChecks()
+        if self.pos.y <= 0+self.rect.height: self.collided_with_wall=True
+        if self.pos.y >= PLAY_HEIGHT-self.rect.height: self.collided_with_wall=True
         if self.collided_with_wall: self.pos.y = self.precheck_pos.y
 
         self.rect.center = self.pos
@@ -181,6 +185,7 @@ class Player(pygame.sprite.Sprite):
         #     self.collided_with_wall = True
         # else: self.collided_with_wall = False
 
+        self.collided_with_wall = False
         if self.walls==None: return
         for wall in self.walls:
             overlap = (wall.rect.left - (self.pos.x-self.rect.width/2), wall.rect.top - (self.pos.y-self.rect.height/2))
@@ -192,7 +197,7 @@ class Player(pygame.sprite.Sprite):
         if self.enemies==None: return
         for enemy in self.enemies:
             overlap = (enemy.rect.left - (self.pos.x-self.rect.width/2), enemy.rect.top - (self.pos.y-self.rect.height/2))
-            if self.mask.overlap(enemy.mask, overlap)
+            if self.mask.overlap(enemy.mask, overlap):
                 self.lose = True
                 break
 
@@ -227,31 +232,50 @@ class Player(pygame.sprite.Sprite):
         self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
 
 
+
 #need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
-class ShadowPlayer(pygame.sprite.Sprite):
+class Enemy(pygame.sprite.Sprite):
     def __init__(self, route, groups):
         super().__init__(groups)
         self.can_move = True
         self.route = route
         self.pos = pygame.math.Vector2(100,100)
+        self.angle = 180
 
-        self.image = pygame.Surface((10,10))
-        self.image.fill('blue')
+        self.og_image = pygame.Surface((20,20)).convert_alpha()
+        self.og_image.fill('red')
+        self.image = self.og_image
         self.rect = self.image.get_frect()
 
-        print(self.route)
+        self.mask = pygame.mask.from_surface(self.image)
+
+        print(route)
     
     def Update(self, time):
         t_key = return_closest_float(time, list(self.route.keys()))
-        self.pos = self.route[t_key]
+        self.pos.x = self.route[t_key][0]
+        self.pos.y = self.route[t_key][1]
+        self.angle = self.route[t_key][2]
+
         self.rect.center = self.pos
-        print(f'pos: {self.pos} | cur time: {time} | closest match in route: {t_key}')
+        self.Steer(self.angle)
+
+        if self.route[t_key][3]: self.kill()
+
+
+    def Steer(self, angle):
+        rotated_image = pygame.transform.rotate(self.og_image, angle)
+        new_rect = rotated_image.get_frect(center=self.pos)
+        self.image = rotated_image
+        self.rect = new_rect
+
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 class EndPoint(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
-        self.image = pygame.Surface((20,20))
+        self.image = pygame.Surface((30,30))
         self.image.fill('blue')
         self.rect = self.image.get_frect()
         self.mask = pygame.mask.from_surface(self.image)
@@ -260,11 +284,10 @@ class EndPoint(pygame.sprite.Sprite):
 class DeadEndPoint(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
-        self.image = pygame.Surface((20,20))
+        self.image = pygame.Surface((30,30))
         self.image.fill('grey')
         self.rect = self.image.get_frect()
         self.mask = pygame.mask.from_surface(self.image)
-
 
 
 class Wall(pygame.sprite.Sprite):
@@ -319,7 +342,9 @@ class GameScene(SceneBase):
         self.score = 0
         self.starting_go_time = 6
         self.go_time = self.starting_go_time
+
         self.player_route = {}
+        self.routes = []
 
         self.all_sprites = pygame.sprite.Group()
         self.text_sprites = pygame.sprite.Group()
@@ -365,6 +390,10 @@ class GameScene(SceneBase):
             self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
 
         if self.playing:
+            self.player_route[self.go_time] = [self.player.pos.x, self.player.pos.y, self.player.angle, int(self.player.win)]
+
+
+            
             self.go_time = self.go_time-dt if self.go_time>0 else 0
 
             #inefficient but it works fuck off
@@ -372,12 +401,12 @@ class GameScene(SceneBase):
             self.player.enemies = self.enemies
             self.player.walls = self.walls
 
-
             self.del_time_text = TextSprite(f'{self.go_time:.2f}', (PLAY_WIDTH/2, 15), [self.text_sprites], 30, 'white', 'black')
 
-
             if self.player.win:
-                self.score += 1
+                if self.player in self.all_sprites:
+                    self.routes.append(dict(self.player_route))
+                    self.score += 1
                 self.outro = True
                 self.player.kill()
 
@@ -388,10 +417,15 @@ class GameScene(SceneBase):
                     print('loser')
 
         if self.outro:
-            if self.go_time<=0: self.Setup()
             self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT-15), [self.text_sprites], 30, 'green', 'white')
+            if self.go_time<=0: self.Setup()
 
         self.player.Update(dt)
+        for e in self.enemies: 
+            e.Update(self.go_time)
+
+
+
 
         # self.del_time = self.del_time-dt if self.del_time > 0 else 0
         
@@ -417,17 +451,17 @@ class GameScene(SceneBase):
 
 
     def Setup(self):
+
         self.intro = True
         self.intro_time = self.starting_intro_time
         self.playing = False
         self.outro = False
         self.go_time = self.starting_go_time
 
-
-        if self.player: self.player.kill()
-        if self.end_point: 
-            self.dead_end_point = DeadEndPoint(self.dead_end_points)
-            self.dead_end_point.rect.center = self.end_point.rect.center
+        if self.player in self.all_sprites: self.player.kill()
+        if self.end_point in self.all_sprites: 
+            dead_end_point = DeadEndPoint(self.dead_end_points)
+            dead_end_point.rect.center = self.end_point.rect.center
             self.end_point.kill()
 
         self.player = Player(self.all_sprites)
@@ -435,6 +469,11 @@ class GameScene(SceneBase):
 
         self.player.pos, self.player.angle = self.generate_route_point()
         self.end_point.rect.center, foo = self.generate_route_point()
+
+        for i in self.enemies: i.kill()
+        for i in range(self.score):
+            enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
+            print(enemy)
 
 
 
