@@ -1,9 +1,9 @@
 /venv
 /build
 /dist
-.spec
 
 pseudocode.txt
 notes.txt
 
+.spec
 .zip
