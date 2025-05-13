@@ -1,0 +1,9 @@
+/venv
+/built
+/dist
+.spec
+
+pseudocode.txt
+notes.txt
+
+.zip
