@@ -5,6 +5,7 @@ import random
 import pygame
 import asyncio
 
+web_version = False
 
 #settings
 default_buffer = 0
@@ -17,8 +18,6 @@ DOWN = [pygame.K_DOWN, pygame.K_s]
 #constants
 PLAY_WIDTH, PLAY_HEIGHT = 600,600
 WINDOW_WIDTH, WINDOW_HEIGHT = PLAY_WIDTH+default_buffer, PLAY_HEIGHT+default_buffer
-
-
 
 
 
@@ -50,9 +49,8 @@ async def main(width, height, fps, starting_scene):
                 elif event.key == pygame.K_F4 and alt_pressed:
                     quit_attempt = True
             
-            if quit_attempt: #turned off for web
-                # active_scene.Terminate()
-                pass
+            if quit_attempt and not web_version:
+                active_scene.Terminate()
             else:
                 filtered_events.append(event)
         
@@ -70,16 +68,14 @@ async def main(width, height, fps, starting_scene):
         await asyncio.sleep(0)
 
 
-
 def return_closest_float(f, f_list):
     if not f_list: return None
 
     closest_float = min(f_list, key=lambda x: abs(x - f))
     return closest_float
 
+
     
-
-
 class SceneBase():
     def __init__(self):
         self.next = self
@@ -100,6 +96,8 @@ class SceneBase():
         self.SwitchToScene(None)
 
 
+
+
 class TextSprite(pygame.sprite.Sprite):
     def __init__(self, text, pos, groups, text_size=30, text_col='black', bg_col=None):
         pygame.font.init()
@@ -115,11 +113,13 @@ class TextSprite(pygame.sprite.Sprite):
         self.image = self.font.render(self.text, True, self.text_col, self.bg_col)
         
         self.rect = self.image.get_frect(center = self.pos)
+
     
     def ChangeColor(self, text_col, bg_col=None):
         self.text_col = text_col
         self.bg_col = bg_col
         self.image = self.font.render(self.text, True, self.text_col, self.bg_col)
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -129,7 +129,7 @@ class Player(pygame.sprite.Sprite):
         self.lose = False
         self.win = False
         self.speed = 280
-        self.steer_speed = 7
+        self.steer_speed = 5
         self.angle = 180
         self.dir = pygame.math.Vector2()
         self.throttle = 0
@@ -176,14 +176,15 @@ class Player(pygame.sprite.Sprite):
         if self.collided_with_wall: self.pos.y = self.precheck_pos.y
 
         self.rect.center = self.pos
-
     
+
     def CollisionChecks(self):
         if self.end_point==None: return
         overlap = (self.end_point.rect.left - (self.pos.x-self.rect.width/2), self.end_point.rect.top - (self.pos.y-self.rect.width/2))
         if self.mask.overlap(self.end_point.mask, overlap):
             self.win = True
         
+        #I think this can be deleted but I'm not SURE yet, so I'm leaving it just for now
         # if self.mask.overlap(self.wall.mask, (self.wall.rect.centerx-self.pos.x, self.wall.rect.centery-self.pos.y)): #I HAVE NO IDEA WHY THIS NEEDS rect.left and rect.top instead of centerx and centery, I can't tell the difference between this and EndPoint but whatever
         #     self.collided_with_wall = True
         # else: self.collided_with_wall = False
@@ -206,13 +207,15 @@ class Player(pygame.sprite.Sprite):
                 break
 
 
-     #str: -1 turn left, 1 turn right.
     def Steer(self, steer):
         self.precheck_angle = self.angle
         self.angle -= steer*self.steer_speed
         if self.angle >= 360: self.angle -= 360
         if self.angle <= -360: self.angle += 360
 
+        # this was annoying, and resulted in getting stuck all the time. 
+        # It would be nicer to try and implement a way where as you rotate you push yourself away from the wall? 
+        #
         # self.CollisionChecks()
         # if self.collided_with_wall: self.angle = self.precheck_angle
 
@@ -230,14 +233,12 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.mask_image = self.mask.to_surface()
 
-    
-    #throt: -1 move backwards, 1 move forwards
+
     def Accelerate(self, throt):
         self.throttle += throt*self.throt_rate if -1 < self.throttle < 1 else 0
 
 
 
-#need to change the route dictionary to be time:[pos.x, pos.y, angle] to pass the angle along as well
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, route, groups):
         super().__init__(groups)
@@ -253,6 +254,7 @@ class Enemy(pygame.sprite.Sprite):
 
         self.mask = pygame.mask.from_surface(self.image)
     
+
     def Update(self, time):
         t_key = return_closest_float(time, list(self.route.keys()))
         self.pos.x = self.route[t_key][0]
@@ -274,6 +276,7 @@ class Enemy(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+
 class EndPoint(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
@@ -283,6 +286,7 @@ class EndPoint(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+
 class DeadEndPoint(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
@@ -290,6 +294,7 @@ class DeadEndPoint(pygame.sprite.Sprite):
         self.image.fill('grey')
         self.rect = self.image.get_frect()
         self.mask = pygame.mask.from_surface(self.image)
+
 
 
 class Wall(pygame.sprite.Sprite):
@@ -316,15 +321,16 @@ class TitleScene(SceneBase):
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                     self.SwitchToScene(GameScene())
-                
+
 
     def Update(self, dt):
         self.text_sprites = pygame.sprite.Group()
 
         start_text = TextSprite('you\'re a butterfly and you deliver pizzas!', (PLAY_WIDTH/2, PLAY_HEIGHT/2 -30), [self.text_sprites])
         start_text = TextSprite('press [space] to start game', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +30), [self.text_sprites], 20)
-        # start_text = TextSprite('press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +45), [self.text_sprites], 20)
+        if not web_version: start_text = TextSprite('press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2 +45), [self.text_sprites], 20)
     
+
     def Render(self, screen):
         screen.fill('white')
         self.text_sprites.draw(screen)
@@ -344,7 +350,7 @@ class GameScene(SceneBase):
         self.intro_time = self.starting_intro_time
         self.score = 0
         self.level = -1
-        self.starting_go_time = 6
+        self.starting_go_time = 10
         self.go_time = self.starting_go_time
 
         self.player_route = {}
@@ -359,6 +365,7 @@ class GameScene(SceneBase):
         self.player = None #defined in setup
         self.end_point = None #defined in setup
 
+        #this is ready, but needs a little tweaking
         #self.wall1 = Wall([self.all_sprites, self.walls], 'assets/collision-maps/L_t1_collision-map.png', PLAY_WIDTH, PLAY_HEIGHT)
         self.Setup()
 
@@ -385,7 +392,6 @@ class GameScene(SceneBase):
 
                 if event.key in [pygame.K_ESCAPE]:
                     if not self.player.lose: 
-                        # self.paused=False if self.paused else True
                         if not self.paused: self.paused = True
                         else: self.SwitchToScene(TitleScene())
                 
@@ -412,7 +418,7 @@ class GameScene(SceneBase):
             self.instruc_text = TextSprite(f'press [esc] to go back to menu', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'black')
             self.instruc_text = TextSprite(f'press [space] to keep playing', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'black')
             self.instruc_text = TextSprite(f'or press [r] to reset', (PLAY_WIDTH/2, PLAY_HEIGHT/2+60), [self.text_sprites], 20, 'black')
-            # self.instruc_text = TextSprite(f'or press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+60), [self.text_sprites], 20, 'black')
+            if not web_version: self.instruc_text = TextSprite(f'or press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+75), [self.text_sprites], 20, 'black')
 
         elif not self.intro and not self.player.lose:
             self.playing = True
@@ -448,7 +454,6 @@ class GameScene(SceneBase):
             for e in self.enemies: 
                 e.Update(self.go_time)
 
-
         if self.outro:
             if not self.paused: 
                 self.instruc_text = TextSprite(f'good job!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'black', 'white')
@@ -463,7 +468,7 @@ class GameScene(SceneBase):
             else:
                 self.instruc_text = TextSprite(f'oops, you crashed!', (PLAY_WIDTH/2, PLAY_HEIGHT/2), [self.text_sprites], 30, 'red', 'white')
             self.instruc_text = TextSprite(f'press [r] to play again', (PLAY_WIDTH/2, PLAY_HEIGHT/2+30), [self.text_sprites], 20, 'red', 'white')
-            # self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'red', 'white')
+            if not web_version: self.instruc_text = TextSprite(f'press [q] to quit', (PLAY_WIDTH/2, PLAY_HEIGHT/2+45), [self.text_sprites], 20, 'red', 'white')
 
 
     def Render(self, screen):
@@ -473,7 +478,6 @@ class GameScene(SceneBase):
         self.text_sprites.draw(screen)
 
         for i in self.text_sprites: i.kill()
-
 
 
     def Setup(self):
@@ -502,7 +506,6 @@ class GameScene(SceneBase):
             enemy = Enemy(dict(self.routes[i]), [self.all_sprites, self.enemies])
             enemy.Update(self.starting_go_time)
 
-
         good_spawn = False
         while not good_spawn:
             self.player.pos, self.player.angle = self.generate_route_point()
@@ -513,10 +516,6 @@ class GameScene(SceneBase):
             ep_overlapping = self.player.mask.overlap(self.end_point.mask, ep_overlap)
             if not ep_overlapping: good_spawn = True
             
-
-
-        
-
 
     def Reset(self):
         self.SwitchToScene(GameScene())
@@ -541,6 +540,7 @@ class GameScene(SceneBase):
         if side==3: angle = 90
 
         return pos,angle
+
 
 
 asyncio.run(main(WINDOW_WIDTH, WINDOW_HEIGHT, 60, TitleScene()))
