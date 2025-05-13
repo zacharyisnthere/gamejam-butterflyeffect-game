@@ -1,5 +1,5 @@
 <h1>Welcome To The Project!</h1>
-<h4>You can find the current public version <a href='https://zacharyisnthere.itch.io/youre-a-butterfly-and-you-deliver-pizzas'>here!</a></h4>
+<h4>You can play the current version <a href='https://zacharyisnthere.itch.io/youre-a-butterfly-and-you-deliver-pizzas'>here!</a></h4>
 </br>
 
 <h4>===contact information===</h4>
